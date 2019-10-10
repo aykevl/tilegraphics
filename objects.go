@@ -20,23 +20,23 @@ type object interface {
 // Rectangle is a single rectangle drawn on the display that can be moved
 // around.
 type Rectangle struct {
-	parent              *Layer // nil for the root
-	x, y, width, height int16
-	color               color.RGBA
+	parent         *Layer // nil for the root
+	x1, y1, x2, y2 int16
+	color          color.RGBA
 }
 
 // boundingBox returns the exact bounding box of the rectangle.
 func (r *Rectangle) boundingBox() (x1, y1, x2, y2 int16) {
-	return r.x, r.y, r.x + r.width, r.y + r.height
+	return r.x1, r.y1, r.x2, r.y2
 }
 
 // Move sets the new position and size of this rectangle.
 func (r *Rectangle) Move(x, y, width, height int16) {
 	r.invalidate()
-	r.x = x
-	r.y = y
-	r.width = width
-	r.height = height
+	r.x1 = x
+	r.y1 = y
+	r.x2 = x + width
+	r.y2 = y + height
 	r.invalidate()
 }
 
@@ -46,8 +46,8 @@ func (r *Rectangle) invalidate() {
 	// Calculate tile coordinates.
 	tileX1 := x / TileSize
 	tileY1 := y / TileSize
-	tileX2 := (x + r.width + TileSize) / TileSize
-	tileY2 := (y + r.height + TileSize) / TileSize
+	tileX2 := (x + (r.x2 - r.x1) + TileSize) / TileSize
+	tileY2 := (y + (r.y2 - r.y1) + TileSize) / TileSize
 
 	for tileX := tileX1; tileX < tileX2; tileX++ {
 		if tileX < 0 || int(tileX) >= len(r.parent.engine.cleanTiles) {
@@ -65,10 +65,10 @@ func (r *Rectangle) invalidate() {
 
 // paint draws the rectangle to the given tile at coordinates tileX and tileY.
 func (r *Rectangle) paint(t *tile, tileX, tileY int16) {
-	x1 := r.x - tileX
-	y1 := r.y - tileY
-	x2 := r.x - tileX + r.width
-	y2 := r.y - tileY + r.height
+	x1 := r.x1 - tileX
+	y1 := r.y1 - tileY
+	x2 := r.x2 - tileX
+	y2 := r.y2 - tileY
 	if x1 < 0 {
 		x1 = 0
 	}
@@ -90,14 +90,14 @@ func (r *Rectangle) paint(t *tile, tileX, tileY int16) {
 
 // absolutePos returns the x and y coordinate of this rectangle in the screen.
 func (r *Rectangle) absolutePos() (int16, int16) {
-	x, y := r.x, r.y
+	x, y := r.x1, r.y1
 	layer := r.parent
 	if &layer.rect == r {
 		layer = layer.parent
 	}
 	for layer != nil {
-		x += layer.rect.x
-		y += layer.rect.y
+		x += layer.rect.x1
+		y += layer.rect.y1
 		layer = layer.parent
 	}
 	return x, y
@@ -128,10 +128,10 @@ func (l *Layer) SetBackgroundColor(background color.RGBA) {
 func (l *Layer) NewRectangle(x, y, width, height int16, c color.RGBA) *Rectangle {
 	r := &Rectangle{
 		parent: l,
-		x:      x,
-		y:      y,
-		width:  width,
-		height: height,
+		x1:     x,
+		y1:     y,
+		x2:     x + width,
+		y2:     y + height,
 		color:  c,
 	}
 	l.objects = append(l.objects, r)
@@ -144,11 +144,11 @@ func (l *Layer) NewRectangle(x, y, width, height int16, c color.RGBA) *Rectangle
 func (l *Layer) NewLayer(x, y, width, height int16, background color.RGBA) *Layer {
 	child := &Layer{
 		rect: Rectangle{
-			x:      x,
-			y:      y,
-			width:  width,
-			height: height,
-			color:  background,
+			x1:    x,
+			y1:    y,
+			x2:    x + width,
+			y2:    y + height,
+			color: background,
 		},
 		engine: l.engine,
 		parent: l,
@@ -172,8 +172,8 @@ func (l *Layer) paint(t *tile, tileX, tileY int16) {
 	l.rect.paint(subtile, tileX, tileY)
 
 	// Move the tile coordinates into the layer coordinate system.
-	tileX -= l.rect.x
-	tileY -= l.rect.y
+	tileX -= l.rect.x1
+	tileY -= l.rect.y1
 
 	// Draw all objects in this tile.
 	for _, obj := range l.objects {
@@ -198,11 +198,11 @@ func (l *Layer) paint(t *tile, tileX, tileY int16) {
 	if tileY < 0 {
 		y1 = -tileY
 	}
-	if tileX+TileSize > l.rect.width {
-		x2 = l.rect.width - tileX
+	if tileX+TileSize > l.rect.x2-l.rect.x1 {
+		x2 = (l.rect.x2 - l.rect.x1) - tileX
 	}
-	if tileY+TileSize > l.rect.height {
-		y2 = l.rect.height - tileY
+	if tileY+TileSize > l.rect.y2-l.rect.y1 {
+		y2 = (l.rect.y2 - l.rect.y1) - tileY
 	}
 
 	// Paint the parts of the layer tile that are part of the layer to the underlying tile.

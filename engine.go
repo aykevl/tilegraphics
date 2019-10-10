@@ -80,11 +80,11 @@ func NewEngine(display Displayer) *Engine {
 	}
 	e.root = Layer{
 		rect: Rectangle{
-			x:      0,
-			y:      0,
-			width:  width,
-			height: height,
-			color:  color.RGBA{0, 0, 0, 255}, // black background by default
+			x1:    0,
+			y1:    0,
+			x2:    width,
+			y2:    height,
+			color: color.RGBA{0, 0, 0, 255}, // black background by default
 		},
 		engine: e,
 	}
