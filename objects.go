@@ -187,6 +187,18 @@ func (l *Layer) SetBackgroundColor(background color.RGBA) {
 	l.rect.invalidate(l.rect.x1, l.rect.y1, l.rect.x2, l.rect.y2)
 }
 
+// Move sets the new position and size of this layer.
+func (l *Layer) Move(x, y, width, height int16) {
+	if x != l.rect.x1 || y != l.rect.y1 {
+		// The layer was moved, so all containing objects must be redrawn.
+		l.rect.invalidate(l.rect.x1, l.rect.y1, l.rect.x2, l.rect.y2)
+	}
+
+	// The layer wasn't moved, only its size changed. The objects that need to
+	// be redrawn will be redrawn anyway with the standard algorithm.
+	l.rect.Move(x, y, width, height)
+}
+
 // NewRectangle adds a new rectangle to the layer with the given color.
 func (l *Layer) NewRectangle(x, y, width, height int16, c color.RGBA) *Rectangle {
 	r := &Rectangle{
