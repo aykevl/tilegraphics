@@ -47,17 +47,21 @@ type Engine struct {
 	// the Display method is called.
 	display Displayer
 
-	// The objects slice is an array of objects that should be drawn (in order)
-	// to the display, with backgroundColor as the background color.
-	objects         []*Rectangle
-	backgroundColor color.RGBA
+	// The root layer, that stores the background color and the list of objects
+	// (in order) that should be drawn on each tile.
+	root Layer
 
 	// cleanTiles stores for each tile whether it should be redrawn. True means
 	// it is up-to-date, false means it should be redrawn.
 	cleanTiles [][]bool
 
-	// tile is a tile that is re-used for every drawing operation.
+	// tile is a tile that is re-used for all root tiles.
 	tile *tile
+
+	// tilePool is a slice of re-usable tiles. They can be used for layer
+	// drawing, without allocating a new tile every time or allocating a big
+	// object on the stack (if it gets stack-allocated at all).
+	tilePool []*tile
 }
 
 // NewEngine creates a new rendering engine based on the displayer interface.
@@ -69,32 +73,57 @@ func NewEngine(display Displayer) *Engine {
 		cleanTiles[i] = make([]bool, height/TileSize)
 	}
 
-	return &Engine{
-		display:         display,
-		tile:            &tile{},
-		cleanTiles:      cleanTiles,
-		backgroundColor: color.RGBA{0, 0, 0, 255},
+	e := &Engine{
+		display:    display,
+		tile:       &tile{},
+		cleanTiles: cleanTiles,
 	}
+	e.root = Layer{
+		rect: Rectangle{
+			x:      0,
+			y:      0,
+			width:  width,
+			height: height,
+			color:  color.RGBA{0, 0, 0, 255}, // black background by default
+		},
+		engine: e,
+	}
+	e.root.rect.parent = &e.root
+	return e
 }
 
-// SetBackgroundColor updates the background color of the display.
+// SetBackgroundColor updates the background color of the display. Note that the
+// alpha channel should be 100% (255) and will be ignored.
 func (e *Engine) SetBackgroundColor(background color.RGBA) {
-	e.backgroundColor = background
+	e.root.SetBackgroundColor(background)
 }
 
 // NewRectangle adds a new rectangle to the display with the given color.
 func (e *Engine) NewRectangle(x, y, width, height int16, c color.RGBA) *Rectangle {
-	r := &Rectangle{
-		engine: e,
-		x:      x,
-		y:      y,
-		width:  width,
-		height: height,
-		color:  c,
+	return e.root.NewRectangle(x, y, width, height, c)
+}
+
+// NewLayer creates a new layer to the display with the given background color.
+func (e *Engine) NewLayer(x, y, width, height int16, background color.RGBA) *Layer {
+	return e.root.NewLayer(x, y, width, height, background)
+}
+
+// getTile returns a reusable tile from the tile pool, without allocating a new
+// tile. It should be returned to the tile pool after use with putTile.
+func (e *Engine) getTile() *tile {
+	if len(e.tilePool) != 0 {
+		// A reusable tile was found.
+		t := e.tilePool[len(e.tilePool)-1]
+		e.tilePool = e.tilePool[:len(e.tilePool)-1]
+		return t
 	}
-	e.objects = append(e.objects, r)
-	r.invalidate()
-	return r
+	// No reusable tile was found, make a new one.
+	return &tile{}
+}
+
+// putTile returns a tile back to the tile pool that isn't used anymore.
+func (e *Engine) putTile(t *tile) {
+	e.tilePool = append(e.tilePool, t)
 }
 
 // Display updates the display with all the changes that have been done since
@@ -111,17 +140,10 @@ func (e *Engine) Display() {
 			cleanTilesRow[col] = true
 			tilesDrawn++
 
+			// Paint tile.
 			tileX := int16(row * TileSize)
 			tileY := int16(col * TileSize)
-
-			// Draw background.
-			bg := Rectangle{e, tileX, tileY, TileSize, TileSize, e.backgroundColor}
-			bg.Paint(e.tile, tileX, tileY)
-
-			// Draw all objects in this tile.
-			for _, obj := range e.objects {
-				obj.Paint(e.tile, tileX, tileY)
-			}
+			e.root.paint(e.tile, tileX, tileY)
 
 			// Draw tile in screen.
 			e.display.FillRectangleWithBuffer(tileX, tileY, TileSize, TileSize, e.tile[:])
