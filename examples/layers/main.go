@@ -41,6 +41,7 @@ func main() {
 		if x <= -20 {
 			move = 1
 		}
+		y += move
 		x += move
 		rect.Move(x, y, width, height)
 		engine.Display()
