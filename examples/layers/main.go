@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/aykevl/tilegraphics"
+	"github.com/aykevl/tilegraphics/testscreen"
 )
 
 const printInfoEvery = time.Second * 3
 
 func main() {
 	println("start")
-	configureScreen()
+	screen := testscreen.NewScreen("layers")
 	screenWidth, _ := screen.Size()
 	engine := tilegraphics.NewEngine(screen)
 

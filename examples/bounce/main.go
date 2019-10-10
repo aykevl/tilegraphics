@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/aykevl/tilegraphics"
+	"github.com/aykevl/tilegraphics/testscreen"
 )
 
 func main() {
 	println("start")
-	configureScreen()
+	screen := testscreen.NewScreen("bounce")
 	screenWidth, _ := screen.Size()
 	engine := tilegraphics.NewEngine(screen)
 
