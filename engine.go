@@ -68,9 +68,9 @@ type Engine struct {
 func NewEngine(display Displayer) *Engine {
 	// Store which tiles are currently up-to-date and which aren't.
 	width, height := display.Size()
-	cleanTiles := make([][]bool, width/TileSize)
-	for i := int16(0); i < width/TileSize; i++ {
-		cleanTiles[i] = make([]bool, height/TileSize)
+	cleanTiles := make([][]bool, (height+TileSize-1)/TileSize)
+	for i := 0; i < len(cleanTiles); i++ {
+		cleanTiles[i] = make([]bool, (width+TileSize-1)/TileSize)
 	}
 
 	e := &Engine{
@@ -141,8 +141,8 @@ func (e *Engine) Display() {
 			tilesDrawn++
 
 			// Paint tile.
-			tileX := int16(row * TileSize)
-			tileY := int16(col * TileSize)
+			tileX := int16(col * TileSize)
+			tileY := int16(row * TileSize)
 			e.root.paint(e.tile, tileX, tileY)
 
 			// Draw tile in screen.

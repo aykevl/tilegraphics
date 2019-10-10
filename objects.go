@@ -107,22 +107,31 @@ func (r *Rectangle) invalidateMiddleBlock(xA, maxY1, xB, minY2 int16) {
 // invalidate invalidates all tiles currently under the rectangle.
 func (r *Rectangle) invalidate(x1, y1, x2, y2 int16) {
 	x, y := r.absolutePos(x1, y1)
-	// Calculate tile coordinates.
+	// Calculate tile grid indices.
 	tileX1 := x / TileSize
 	tileY1 := y / TileSize
 	tileX2 := (x + (x2 - x1) + TileSize) / TileSize
 	tileY2 := (y + (y2 - y1) + TileSize) / TileSize
 
-	for tileX := tileX1; tileX < tileX2; tileX++ {
-		if tileX < 0 || int(tileX) >= len(r.parent.engine.cleanTiles) {
-			continue
-		}
-		tileRow := r.parent.engine.cleanTiles[tileX]
-		for tileY := tileY1; tileY < tileY2; tileY++ {
-			if tileY < 0 || int(tileY) >= len(tileRow) {
-				continue
-			}
-			tileRow[tileY] = false
+	// Limit the tile grid indices to the screen.
+	if tileY1 < 0 {
+		tileY1 = 0
+	}
+	if int(tileY2) >= len(r.parent.engine.cleanTiles) {
+		tileY2 = int16(len(r.parent.engine.cleanTiles) - 1)
+	}
+	if tileX1 < 0 {
+		tileX1 = 0
+	}
+	if int(tileX2) >= len(r.parent.engine.cleanTiles[0]) {
+		tileX2 = int16(len(r.parent.engine.cleanTiles[0]))
+	}
+
+	// Set all tiles in bounds as needing an update.
+	for tileY := tileY1; tileY < tileY2; tileY++ {
+		tileRow := r.parent.engine.cleanTiles[tileY]
+		for tileX := tileX1; tileX < tileX2; tileX++ {
+			tileRow[tileX] = false
 		}
 	}
 }

@@ -101,6 +101,9 @@ func (s *Screen) FillRectangleWithBuffer(x, y, width, height int16, buffer []col
 		for bufferY := int16(0); bufferY < height; bufferY++ {
 			surfaceX := int(bufferX + x)
 			surfaceY := int(bufferY + y)
+			if surfaceX >= int(s.surface.W) || surfaceY >= int(s.surface.H) {
+				continue
+			}
 			s.surface.Set(surfaceX, surfaceY, buffer[bufferX+bufferY*height])
 		}
 	}
