@@ -118,7 +118,7 @@ func (r *Rectangle) invalidate(x1, y1, x2, y2 int16) {
 		tileY1 = 0
 	}
 	if int(tileY2) >= len(r.parent.engine.cleanTiles) {
-		tileY2 = int16(len(r.parent.engine.cleanTiles) - 1)
+		tileY2 = int16(len(r.parent.engine.cleanTiles))
 	}
 	if tileX1 < 0 {
 		tileX1 = 0
