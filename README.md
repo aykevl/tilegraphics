@@ -11,6 +11,7 @@ It is not yet complete. Currently the following objects can be drawn:
   * Layers that contain more objects and can be moved/resized.
   * Transparency: blending a semi-transparent foreground color with a solid
     background color.
+  * Lines with support for transparency and anti-aliasing.
 
 ## License
 

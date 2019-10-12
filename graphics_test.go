@@ -160,6 +160,110 @@ func TestRectTransparent(t *testing.T) {
 	matchImage(t, screen, "testdata/rect2.png")
 }
 
+// Test basic line rendering in all directions.
+func TestLine1(t *testing.T) {
+	screen := imagescreen.NewScreen(100, 100)
+	engine := NewEngine(screen)
+	engine.SetBackgroundColor(color.RGBA{255, 255, 255, 255})
+	engine.NewRectangle(8, 8, 85, 85, color.RGBA{0, 0, 0, 255})
+	for x := int16(10); x <= 90; x += 10 {
+		engine.NewLine(x, 10, 50, 50, color.RGBA{255, 255, 255, 255})
+		engine.NewLine(x, 90, 50, 50, color.RGBA{255, 255, 255, 255})
+	}
+	for y := int16(20); y <= 80; y += 10 {
+		engine.NewLine(10, y, 50, 50, color.RGBA{255, 255, 255, 255})
+		engine.NewLine(90, y, 50, 50, color.RGBA{255, 255, 255, 255})
+	}
+	engine.Display()
+
+	matchImage(t, screen, "testdata/line1.png")
+}
+
+// Test random lines in all directions, with colors and transparency.
+func TestLineBlend(t *testing.T) {
+	// Get a deterministic randomness source.
+	rand := rand.New(rand.NewSource(1))
+
+	// Create a screen to draw on.
+	const screenWidth = 100
+	const screenHeight = 100
+	screen := imagescreen.NewScreen(screenWidth, screenHeight)
+	engine := NewEngine(screen)
+
+	// Draw some colors in the background.
+	engine.NewRectangle(0, 0, screenWidth/2, screenHeight/2, color.RGBA{255, 0, 0, 255})
+	engine.NewRectangle(screenWidth/2, 0, screenWidth, screenHeight/2, color.RGBA{0, 255, 0, 255})
+	engine.NewRectangle(0, screenHeight/2, screenWidth/2, screenHeight, color.RGBA{0, 0, 255, 255})
+	engine.NewRectangle(screenWidth/2, screenHeight/2, screenWidth, screenHeight, color.RGBA{255, 255, 0, 255})
+
+	// Draw a lot of random lines.
+	for i := 0; i < 100; i++ {
+		x1 := int16(rand.Uint32()%(screenWidth+50) - 25)
+		y1 := int16(rand.Uint32()%(screenHeight+50) - 25)
+		x2 := int16(rand.Uint32()%(screenWidth+50) - 25)
+		y2 := int16(rand.Uint32()%(screenHeight+50) - 25)
+		lineColor := color.RGBA{uint8(rand.Uint32()), uint8(rand.Uint32()), uint8(rand.Uint32()), 255}
+		if rand.Uint32()%2 == 0 {
+			lineColor = ApplyAlpha(lineColor, uint8(rand.Uint32()))
+		}
+		engine.NewLine(x1, y1, x2, y2, lineColor)
+	}
+	engine.Display()
+
+	matchImage(t, screen, "testdata/line2.png")
+}
+
+// Test invalidation logic of a line. When a line is created, it should
+// invalidate at least all the tiles it touches, so that the next call to
+// Display() will correctly re-paint those tiles.
+func TestLineInvalidate(t *testing.T) {
+	// Get a deterministic randomness source.
+	rand := rand.New(rand.NewSource(1))
+
+	// Test different display sizes/configurations.
+	for i := 0; i < 100; i++ {
+		screenWidth := int16(rand.Uint32()%20 + 100)
+		screenHeight := int16(rand.Uint32()%20 + 100)
+		screen := imagescreen.NewScreen(screenWidth,
+			screenHeight)
+		engine := NewEngine(screen)
+
+		// Draw some colors in the background.
+		engine.NewRectangle(0, 0, screenWidth/2, screenHeight/2, color.RGBA{255, 0, 0, 255})
+		engine.NewRectangle(screenWidth/2, 0, screenWidth, screenHeight/2, color.RGBA{0, 255, 0, 255})
+		engine.NewRectangle(0, screenHeight/2, screenWidth/2, screenHeight, color.RGBA{0, 0, 255, 255})
+		engine.NewRectangle(screenWidth/2, screenHeight/2, screenWidth, screenHeight, color.RGBA{255, 255, 0, 255})
+		engine.Display()
+
+		// Draw a line with a random color.
+		x1 := int16(rand.Int31())%(screenWidth+50) - 25
+		y1 := int16(rand.Int31())%(screenHeight+50) - 25
+		x2 := int16(rand.Int31())%(screenWidth+50) - 25
+		y2 := int16(rand.Int31())%(screenHeight+50) - 25
+		lineColor := color.RGBA{uint8(rand.Uint32()), uint8(rand.Uint32()), uint8(rand.Uint32()), 255}
+		if rand.Uint32()%2 == 0 {
+			lineColor = ApplyAlpha(lineColor, uint8(rand.Uint32()))
+		}
+		engine.NewLine(x1, y1, x2, y2, lineColor)
+		engine.Display()
+
+		// Draw the background with the line at once.
+		reference := imagescreen.NewScreen(screenWidth, screenHeight)
+		referenceEngine := NewEngine(reference)
+		referenceEngine.NewRectangle(0, 0, screenWidth/2, screenHeight/2, color.RGBA{255, 0, 0, 255})
+		referenceEngine.NewRectangle(screenWidth/2, 0, screenWidth, screenHeight/2, color.RGBA{0, 255, 0, 255})
+		referenceEngine.NewRectangle(0, screenHeight/2, screenWidth/2, screenHeight, color.RGBA{0, 0, 255, 255})
+		referenceEngine.NewRectangle(screenWidth/2, screenHeight/2, screenWidth, screenHeight, color.RGBA{255, 255, 0, 255})
+		referenceEngine.NewLine(x1, y1, x2, y2, lineColor)
+		referenceEngine.Display()
+
+		if err := sameImage(screen, reference); err != nil {
+			t.Errorf("adding a line didn't invalidate the correct area")
+			saveTemporaryImages(t, "LineInvalidate", i, screen, reference)
+		}
+	}
+}
+
 // matchImage compares the given image with the PNG stored at the path, and will
 // log an error if they don't match. Testing can continue on errors.
 func matchImage(t *testing.T, screen *imagescreen.Screen, path string) {

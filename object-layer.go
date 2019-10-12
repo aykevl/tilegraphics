@@ -70,6 +70,28 @@ func (l *Layer) NewLayer(x, y, width, height int16, background color.RGBA) *Laye
 	return child
 }
 
+// NewLine creates a new line with the given coordinates and line color. There
+// is no restriction on the order of coordinates. Note that x2, y2 is inclusive,
+// not exlusive, meaning that those pixels will get painted as well.
+func (l *Layer) NewLine(x1, y1, x2, y2 int16, stroke color.RGBA) *Line {
+	// Let the first coordinate always be to the left of the second coordinate.
+	if x1 > x2 {
+		x1, x2 = x2, x1
+		y1, y2 = y2, y1
+	}
+	line := &Line{
+		parent: l,
+		x1:     x1,
+		y1:     y1,
+		x2:     x2,
+		y2:     y2,
+		color:  stroke,
+	}
+	l.objects = append(l.objects, line)
+	line.invalidate()
+	return line
+}
+
 // paint draws the layer (and nothing outside the layer) to the tile at
 // coordinates tileX and tileY.
 func (l *Layer) paint(t *tile, tileX, tileY int16) {

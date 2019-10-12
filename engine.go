@@ -108,6 +108,12 @@ func (e *Engine) NewLayer(x, y, width, height int16, background color.RGBA) *Lay
 	return e.root.NewLayer(x, y, width, height, background)
 }
 
+// NewLine creates a new line with the two given coordinates and the given
+// stroke color.
+func (e *Engine) NewLine(x1, y1, x2, y2 int16, stroke color.RGBA) *Line {
+	return e.root.NewLine(x1, y1, x2, y2, stroke)
+}
+
 // getTile returns a reusable tile from the tile pool, without allocating a new
 // tile. It should be returned to the tile pool after use with putTile.
 func (e *Engine) getTile() *tile {

@@ -24,6 +24,18 @@ func Blend(bottom, top color.RGBA) color.RGBA {
 	}
 }
 
+// ApplyAlpha takes a color (that may be semi-transparent) and applies the given
+// alpha to it, making it even more transparent. It does so while taking gamma
+// into account, see Blend.
+func ApplyAlpha(c color.RGBA, alpha uint8) color.RGBA {
+	return color.RGBA{
+		R: encodeGamma(decodeGamma(c.R) * uint32(alpha) / 256),
+		G: encodeGamma(decodeGamma(c.G) * uint32(alpha) / 256),
+		B: encodeGamma(decodeGamma(c.B) * uint32(alpha) / 256),
+		A: uint8(uint32(c.A) * uint32(alpha) / 256),
+	}
+}
+
 // decodeGamma decodes a single 8-bit gamma-encoded (compressed) value to a
 // mostly linear color intensity.
 func decodeGamma(component uint8) uint32 {
