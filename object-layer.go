@@ -146,7 +146,7 @@ func (l *Layer) paintObjects(t *tile, tileX, tileY int16) {
 	// Draw all objects in this tile.
 	for _, obj := range l.objects {
 		x1, y1, x2, y2 := obj.boundingBox()
-		if x1 > tileX+TileSize || y1 > tileY+TileSize || x2 < tileX || y2 < tileY {
+		if x1 > tileX+TileSize || y1 > tileY+TileSize || x2 <= tileX || y2 <= tileY {
 			// Object falls outside of this layer, so don't draw.
 			continue
 		}
