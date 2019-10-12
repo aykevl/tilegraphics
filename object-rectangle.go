@@ -139,9 +139,19 @@ func (r *Rectangle) paint(t *tile, tileX, tileY int16) {
 	if y2 > TileSize {
 		y2 = TileSize
 	}
-	for x := x1; x < x2; x++ {
-		for y := y1; y < y2; y++ {
-			t[x+y*TileSize] = r.color
+	if r.color.A == 255 {
+		// Fill without blending, because the rectangle is not transparent.
+		for x := x1; x < x2; x++ {
+			for y := y1; y < y2; y++ {
+				t[x+y*TileSize] = r.color
+			}
+		}
+	} else {
+		// Blend with the background (slow path).
+		for x := x1; x < x2; x++ {
+			for y := y1; y < y2; y++ {
+				t[x+y*TileSize] = Blend(t[x+y*TileSize], r.color)
+			}
 		}
 	}
 }

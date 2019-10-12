@@ -8,6 +8,9 @@ screen that did in fact change.
 It is not yet complete. Currently the following objects can be drawn:
 
   * Rectangles with a solid color.
+  * Layers that contain more objects and can be moved/resized.
+  * Transparency: blending a semi-transparent foreground color with a solid
+    background color.
 
 ## License
 

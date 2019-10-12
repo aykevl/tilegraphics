@@ -73,28 +73,37 @@ func (l *Layer) NewLayer(x, y, width, height int16, background color.RGBA) *Laye
 // paint draws the layer (and nothing outside the layer) to the tile at
 // coordinates tileX and tileY.
 func (l *Layer) paint(t *tile, tileX, tileY int16) {
+	if l.rect.color.A == 255 {
+		// Fast path: tile is fully opaque. We can draw directly in the passed
+		// in tile.
+		l.rect.paint(t, tileX, tileY)
+		l.paintObjects(t, tileX, tileY)
+		return
+	}
+
+	// Slow path. The background of this tile is at least partially transparent,
+	// so paint first in a temporary tile and then blend that tile with the
+	// to-be-painted (background) tile.
+
 	// Get a new tile to paint on from the tile pool, to avoid a heap
 	// allocation.
 	subtile := l.engine.getTile()
 
-	// Paint the background. The background works from the parent coordinates
-	// (because it defines the rect coordinates), so don't adjust tileX and
-	// tileY.
-	l.rect.paint(subtile, tileX, tileY)
+	// Paint the background, simply by filling this subtile with the layer
+	// background color. Blending takes place when painting this tile on the
+	// background, so don't blend here.
+	for y := 0; y < TileSize; y++ {
+		for x := 0; x < TileSize; x++ {
+			subtile[y*TileSize+x] = l.rect.color
+		}
+	}
+
+	// Draw all objects in this tile.
+	l.paintObjects(subtile, tileX, tileY)
 
 	// Move the tile coordinates into the layer coordinate system.
 	tileX -= l.rect.x1
 	tileY -= l.rect.y1
-
-	// Draw all objects in this tile.
-	for _, obj := range l.objects {
-		x1, y1, x2, y2 := obj.boundingBox()
-		if x1 > tileX+TileSize || y1 > tileY+TileSize || x2 < tileX || y2 < tileY {
-			// Object falls outside of this layer, so don't draw.
-			continue
-		}
-		obj.paint(subtile, tileX, tileY)
-	}
 
 	// Determine the bounds of the tile that should be painted to.
 	var (
@@ -116,13 +125,31 @@ func (l *Layer) paint(t *tile, tileX, tileY int16) {
 		y2 = (l.rect.y2 - l.rect.y1) - tileY
 	}
 
-	// Paint the parts of the layer tile that are part of the layer to the underlying tile.
+	// Paint the underlying tile using the temporary tile.
 	for x := x1; x < x2; x++ {
 		for y := y1; y < y2; y++ {
-			t[y*TileSize+x] = subtile[y*TileSize+x]
+			t[y*TileSize+x] = Blend(t[y*TileSize+x], subtile[y*TileSize+x])
 		}
 	}
 
 	// Give the temporary tile back to the pool.
 	l.engine.putTile(subtile)
+}
+
+// paintObjects will paint the objects in this layer into the given tile, at the
+// given coordinates.
+func (l *Layer) paintObjects(t *tile, tileX, tileY int16) {
+	// Move the tile coordinates into the layer coordinate system.
+	tileX -= l.rect.x1
+	tileY -= l.rect.y1
+
+	// Draw all objects in this tile.
+	for _, obj := range l.objects {
+		x1, y1, x2, y2 := obj.boundingBox()
+		if x1 > tileX+TileSize || y1 > tileY+TileSize || x2 < tileX || y2 < tileY {
+			// Object falls outside of this layer, so don't draw.
+			continue
+		}
+		obj.paint(t, tileX, tileY)
+	}
 }
