@@ -147,6 +147,19 @@ func TestLayerUpdate(t *testing.T) {
 	}
 }
 
+// Test that layers don't let their objects escape outside of the layer.
+func TestLayerBounds(t *testing.T) {
+	screen := imagescreen.NewScreen(100, 100)
+	engine := NewEngine(screen)
+	engine.SetBackgroundColor(color.RGBA{50, 50, 50, 255})
+	layer := engine.NewLayer(11, 7, 71, 83, color.RGBA{255, 255, 255, 255})
+	layer.NewRectangle(-5, -5, 30, 30, color.RGBA{255, 0, 0, 255})
+	layer.NewRectangle(60, 60, 30, 30, color.RGBA{0, 255, 0, 255})
+	engine.Display()
+
+	matchImage(t, screen, "testdata/layer1.png")
+}
+
 // Test drawing a few transparent rectangles partially over each other, and
 // check whether the image output matches the expected output.
 func TestRectTransparent(t *testing.T) {

@@ -95,18 +95,6 @@ func (l *Layer) NewLine(x1, y1, x2, y2 int16, stroke color.RGBA) *Line {
 // paint draws the layer (and nothing outside the layer) to the tile at
 // coordinates tileX and tileY.
 func (l *Layer) paint(t *tile, tileX, tileY int16) {
-	if l.rect.color.A == 255 {
-		// Fast path: tile is fully opaque. We can draw directly in the passed
-		// in tile.
-		l.rect.paint(t, tileX, tileY)
-		l.paintObjects(t, tileX, tileY)
-		return
-	}
-
-	// Slow path. The background of this tile is at least partially transparent,
-	// so paint first in a temporary tile and then blend that tile with the
-	// to-be-painted (background) tile.
-
 	// Get a new tile to paint on from the tile pool, to avoid a heap
 	// allocation.
 	subtile := l.engine.getTile()
@@ -148,9 +136,21 @@ func (l *Layer) paint(t *tile, tileX, tileY int16) {
 	}
 
 	// Paint the underlying tile using the temporary tile.
-	for x := x1; x < x2; x++ {
-		for y := y1; y < y2; y++ {
-			t[y*TileSize+x] = Blend(t[y*TileSize+x], subtile[y*TileSize+x])
+	if l.rect.color.A == 0xff {
+		// Fast path: tile is fully opaque. We can draw directly in the passed
+		// in tile.
+		for x := x1; x < x2; x++ {
+			for y := y1; y < y2; y++ {
+				t[y*TileSize+x] = subtile[y*TileSize+x]
+			}
+		}
+	} else {
+		// Slow path. The background of this tile is at least partially
+		// transparent, so blend the temporary tile with the passed in tile.
+		for x := x1; x < x2; x++ {
+			for y := y1; y < y2; y++ {
+				t[y*TileSize+x] = Blend(t[y*TileSize+x], subtile[y*TileSize+x])
+			}
 		}
 	}
 
