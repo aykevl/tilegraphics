@@ -78,6 +78,13 @@ func (s *Screen) Display() error {
 	return s.window.UpdateSurface()
 }
 
+// FillScreen sets the whole screen to the given color.
+func (s *Screen) FillScreen(c color.RGBA) error {
+	width, height := s.Size()
+	s.FillRectangle(0, 0, width, height, c)
+	return nil
+}
+
 // FillRectangle fills the given rectangle with the given color, and returns an
 // error if something went wrong.
 func (s *Screen) FillRectangle(x, y, width, height int16, c color.RGBA) error {
@@ -99,15 +106,21 @@ func (s *Screen) FillRectangleWithBuffer(x, y, width, height int16, buffer []col
 	}
 	for bufferX := int16(0); bufferX < width; bufferX++ {
 		for bufferY := int16(0); bufferY < height; bufferY++ {
-			surfaceX := int(bufferX + x)
-			surfaceY := int(bufferY + y)
-			if surfaceX >= int(s.surface.W) || surfaceY >= int(s.surface.H) {
-				continue
-			}
-			s.surface.Set(surfaceX, surfaceY, buffer[bufferX+bufferY*height])
+			s.SetPixel(bufferX+x, bufferY+y, buffer[bufferX+bufferY*height])
 		}
 	}
 	return nil
+}
+
+// SetPixel sets the pixel at the given coordinates to the given color. Setting
+// a pixel out of bounds is allowed: it won't do anything. An error may be
+// returned if setting the pixel failed.
+func (s *Screen) SetPixel(x, y int16, c color.RGBA) {
+	surfaceX := int(x)
+	surfaceY := int(y)
+	if surfaceX >= 0 && surfaceY >= 0 && surfaceX < int(s.surface.W) || surfaceY < int(s.surface.H) {
+		s.surface.Set(surfaceX, surfaceY, c)
+	}
 }
 
 // Close closes the window.
