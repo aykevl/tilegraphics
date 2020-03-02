@@ -106,7 +106,7 @@ func (s *Screen) FillRectangleWithBuffer(x, y, width, height int16, buffer []col
 	}
 	for bufferX := int16(0); bufferX < width; bufferX++ {
 		for bufferY := int16(0); bufferY < height; bufferY++ {
-			s.SetPixel(bufferX+x, bufferY+y, buffer[bufferX+bufferY*height])
+			s.SetPixel(bufferX+x, bufferY+y, buffer[bufferX+bufferY*width])
 		}
 	}
 	return nil
